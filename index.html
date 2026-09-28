@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="A calm, minimalist Snake game.">
+  <title>Snake</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050505'/%3E%3Ccircle cx='32' cy='32' r='18' fill='%23f2f2f2'/%3E%3Ccircle cx='26' cy='27' r='2.4' fill='%23050505'/%3E%3Ccircle cx='38' cy='27' r='2.4' fill='%23050505'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #050505;
+      color: #f5f5f5;
+      font-synthesis: none;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: #050505;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100svh;
+      overflow-x: hidden;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    main {
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding:
+        max(24px, env(safe-area-inset-top))
+        max(20px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom))
+        max(20px, env(safe-area-inset-left));
+    }
+
+    .game {
+      width: min(720px, calc(100vw - 40px), calc(100svh - 156px));
+      min-width: min(270px, calc(100vw - 40px));
+      display: grid;
+      gap: clamp(20px, 3vh, 30px);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .scores {
+      display: flex;
+      justify-content: center;
+      gap: clamp(48px, 11vw, 88px);
+      min-height: 53px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score {
+      min-width: 62px;
+      text-align: center;
+    }
+
+    .score-label {
+      display: block;
+      margin-bottom: 5px;
+      color: rgba(255, 255, 255, 0.42);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      line-height: 1;
+    }
+
+    .score-value {
+      display: block;
+      color: rgba(255, 255, 255, 0.96);
+      font-size: clamp(1.55rem, 4vw, 2rem);
+      font-weight: 500;
+      letter-spacing: -0.035em;
+      line-height: 1.1;
+      transform-origin: center;
+    }
+
+    .board {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      isolation: isolate;
+      outline: none;
+      touch-action: none;
+      cursor: default;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      opacity: 1;
+      transition: opacity 220ms ease;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .idle-hint,
+    .game-over-panel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+    }
+
+    .idle-hint {
+      color: rgba(255, 255, 255, 0.42);
+      font-size: clamp(0.75rem, 2vw, 0.86rem);
+      font-weight: 450;
+      letter-spacing: 0.025em;
+    }
+
+    .game-over-panel {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(4px);
+    }
+
+    .game-over-title {
+      margin: 0 0 10px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: clamp(0.74rem, 2vw, 0.86rem);
+      font-weight: 650;
+      letter-spacing: 0.18em;
+    }
+
+    .final-score {
+      margin: 0 0 17px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: clamp(1rem, 3vw, 1.14rem);
+      font-weight: 450;
+      letter-spacing: -0.01em;
+    }
+
+    .restart-hint {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: clamp(0.72rem, 2vw, 0.82rem);
+      font-weight: 400;
+      letter-spacing: 0.015em;
+    }
+
+    .game[data-state="running"] .idle-hint,
+    .game[data-state="over"] .idle-hint {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-3px);
+    }
+
+    .game[data-state="over"] canvas {
+      opacity: 0.42;
+    }
+
+    .game[data-state="over"] .game-over-panel {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-height: 520px) and (orientation: landscape) {
+      main {
+        padding-top: 14px;
+        padding-bottom: 14px;
+      }
+
+      .game {
+        width: min(70vh, calc(100vw - 40px));
+        gap: 12px;
+      }
+
+      .scores {
+        min-height: 43px;
+      }
+
+      .score-label {
+        margin-bottom: 3px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      canvas,
+      .idle-hint,
+      .game-over-panel {
+        transition-duration: 1ms;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="game" id="game" data-state="idle" aria-label="Snake game">
+      <header class="scores" aria-label="Scores">
+        <div class="score">
+          <span class="score-label">CURRENT</span>
+          <span class="score-value" id="currentScore">0</span>
+        </div>
+        <div class="score">
+          <span class="score-label">BEST</span>
+          <span class="score-value" id="bestScore">0</span>
+        </div>
+      </header>
+
+      <div
+        class="board"
+        id="board"
+        role="application"
+        aria-label="Snake board. Use arrow keys or W A S D to move."
+        tabindex="0"
+      >
+        <canvas id="canvas" aria-hidden="true"></canvas>
+        <div class="overlay" aria-hidden="true">
+          <div class="idle-hint" id="idleHint">press any arrow key</div>
+          <div class="game-over-panel">
+            <p class="game-over-title">GAME OVER</p>
+            <p class="final-score">Score <span id="finalScore">0</span></p>
+            <p class="restart-hint" id="restartHint">Press any key to restart</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="sr-only" id="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // --- Configuration ----------------------------------------------------
+      const GRID_SIZE = 19;
+      const INITIAL_LENGTH = 5;
+      const INITIAL_TICK_MS = 138;
+      const MIN_TICK_MS = 88;
+      const SPEED_STEP_MS = 1.7;
+      const BEST_SCORE_KEY = "snakeBestScore";
+
+      const DIRECTIONS = Object.freeze({
+        up:    { x: 0,  y: -1, name: "up" },
+        down:  { x: 0,  y: 1,  name: "down" },
+        left:  { x: -1, y: 0,  name: "left" },
+        right: { x: 1,  y: 0,  name: "right" }
+      });
+
+      const KEY_DIRECTIONS = Object.freeze({
+        ArrowUp: DIRECTIONS.up,
+        ArrowDown: DIRECTIONS.down,
+        ArrowLeft: DIRECTIONS.left,
+        ArrowRight: DIRECTIONS.right,
+        w: DIRECTIONS.up,
+        W: DIRECTIONS.up,
+        s: DIRECTIONS.down,
+        S: DIRECTIONS.down,
+        a: DIRECTIONS.left,
+        A: DIRECTIONS.left,
+        d: DIRECTIONS.right,
+        D: DIRECTIONS.right
+      });
+
+      // --- DOM and canvas ---------------------------------------------------
+      const gameElement = document.getElementById("game");
+      const boardElement = document.getElementById("board");
+      const canvas = document.getElementById("canvas");
+      const context = canvas.getContext("2d", { alpha: false });
+      const currentScoreElement = document.getElementById("currentScore");
+      const bestScoreElement = document.getElementById("bestScore");
+      const finalScoreElement = document.getElementById("finalScore");
+      const idleHintElement = document.getElementById("idleHint");
+      const restartHintElement = document.getElementById("restartHint");
+      const statusElement = document.getElementById("status");
+      const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
+
+      let canvasSize = 0;
+      let deviceScale = 1;
+      let gridGap = 0;
+      let gridOrigin = 0;
+
+      // --- Game state -------------------------------------------------------
+      let state = "idle";
+      let snake = [];
+      let previousSnake = [];
+      let direction = DIRECTIONS.right;
+      let directionQueue = [];
+      let food = { x: 13, y: 9 };
+      let score = 0;
+      let bestScore = readBestScore();
+      let tickDuration = INITIAL_TICK_MS;
+      let lastTickTime = performance.now();
+      let spawnTime = performance.now();
+      let foodSpawnTime = performance.now();
+      let eatPulseTime = -Infinity;
+      let deathTime = -Infinity;
+      let touchStart = null;
+      let animationFrameId = 0;
+
+      function readBestScore() {
+        try {
+          const stored = Number.parseInt(localStorage.getItem(BEST_SCORE_KEY), 10);
+          return Number.isFinite(stored) && stored > 0 ? stored : 0;
+        } catch {
+          return 0;
+        }
+      }
+
+      function writeBestScore(value) {
+        try {
+          localStorage.setItem(BEST_SCORE_KEY, String(value));
+        } catch {
+          // Storage can be unavailable in private or restricted browsing modes.
+        }
+      }
+
+      function setInterfaceState(nextState) {
+        state = nextState;
+        gameElement.dataset.state = nextState;
+      }
+
+      function isSamePosition(a, b) {
+        return a.x === b.x && a.y === b.y;
+      }
+
+      function isOpposite(a, b) {
+        return a.x + b.x === 0 && a.y + b.y === 0;
+      }
+
+      // --- Setup, reset, and scoring ---------------------------------------
+      function resetGame(startImmediately = false, startingDirection = DIRECTIONS.right) {
+        const centerY = Math.floor(GRID_SIZE / 2);
+        const headX = Math.floor(GRID_SIZE * 0.42);
+
+        direction = startingDirection;
+        directionQueue = [];
+        score = 0;
+        tickDuration = INITIAL_TICK_MS;
+        deathTime = -Infinity;
+        eatPulseTime = -Infinity;
+
+        // Build the initial body behind the chosen direction so every restart
+        // can safely begin with a directional key or swipe.
+        snake = Array.from({ length: INITIAL_LENGTH }, (_, index) => ({
+          x: headX - startingDirection.x * index,
+          y: centerY - startingDirection.y * index
+        }));
+        previousSnake = snake.map(part => ({ ...part }));
+
+        spawnFood();
+        updateScoreDisplay(false);
+        finalScoreElement.textContent = "0";
+        spawnTime = performance.now();
+        lastTickTime = spawnTime;
+        setInterfaceState(startImmediately ? "running" : "idle");
+
+        if (startImmediately) {
+          statusElement.textContent = "New game started.";
+        }
+      }
+
+      function startGame() {
+        if (state !== "idle") return;
+        previousSnake = snake.map(part => ({ ...part }));
+        lastTickTime = performance.now();
+        setInterfaceState("running");
+        statusElement.textContent = "Game started.";
+      }
+
+      function updateScoreDisplay(animate = true) {
+        currentScoreElement.textContent = String(score);
+        bestScoreElement.textContent = String(bestScore);
+
+        if (animate && !reduceMotionQuery.matches && currentScoreElement.animate) {
+          currentScoreElement.animate(
+            [
+              { transform: "scale(1)" },
+              { transform: "scale(1.1)", offset: 0.45 },
+              { transform: "scale(1)" }
+            ],
+            { duration: 220, easing: "ease-out" }
+          );
+        }
+      }
+
+      function spawnFood() {
+        const freePositions = [];
+
+        for (let y = 0; y < GRID_SIZE; y += 1) {
+          for (let x = 0; x < GRID_SIZE; x += 1) {
+            if (!snake.some(part => part.x === x && part.y === y)) {
+              freePositions.push({ x, y });
+            }
+          }
+        }
+
+        if (freePositions.length === 0) {
+          finishGame(true);
+          return;
+        }
+
+        food = freePositions[Math.floor(Math.random() * freePositions.length)];
+        foodSpawnTime = performance.now();
+      }
+
+      function finishGame(completed = false) {
+        if (state === "over") return;
+        setInterfaceState("over");
+        deathTime = performance.now();
+        finalScoreElement.textContent = String(score);
+        statusElement.textContent = completed
+          ? `Board completed. Final score ${score}.`
+          : `Game over. Final score ${score}.`;
+      }
+
+      // --- Input handling ---------------------------------------------------
+      function requestDirection(nextDirection) {
+        if (!nextDirection) return;
+
+        if (state === "idle") {
+          if (isOpposite(nextDirection, direction)) return;
+          direction = nextDirection;
+          startGame();
+          return;
+        }
+
+        if (state !== "running") return;
+
+        const plannedDirection = directionQueue.length
+          ? directionQueue[directionQueue.length - 1]
+          : direction;
+
+        if (
+          directionQueue.length < 2 &&
+          !isOpposite(nextDirection, plannedDirection) &&
+          nextDirection.name !== plannedDirection.name
+        ) {
+          directionQueue.push(nextDirection);
+        }
+      }
+
+      function restartFromInput(nextDirection = null) {
+        const safeDirection = nextDirection || DIRECTIONS.right;
+        resetGame(true, safeDirection);
+      }
+
+      window.addEventListener("keydown", event => {
+        const nextDirection = KEY_DIRECTIONS[event.key];
+
+        if (nextDirection) {
+          event.preventDefault();
+
+          if (state === "over") {
+            restartFromInput(nextDirection);
+          } else {
+            requestDirection(nextDirection);
+          }
+          return;
+        }
+
+        if (
+          state === "over" &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !["Tab", "Shift", "Control", "Alt", "Meta"].includes(event.key)
+        ) {
+          event.preventDefault();
+          restartFromInput();
+        }
+      }, { passive: false });
+
+      boardElement.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        event.preventDefault();
+        boardElement.setPointerCapture?.(event.pointerId);
+        touchStart = {
+          x: event.clientX,
+          y: event.clientY,
+          pointerId: event.pointerId
+        };
+      }, { passive: false });
+
+      boardElement.addEventListener("pointermove", event => {
+        if (touchStart && event.pointerId === touchStart.pointerId) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      boardElement.addEventListener("pointerup", event => {
+        if (!touchStart || event.pointerId !== touchStart.pointerId) return;
+        event.preventDefault();
+
+        const deltaX = event.clientX - touchStart.x;
+        const deltaY = event.clientY - touchStart.y;
+        const swipeDistance = Math.hypot(deltaX, deltaY);
+        const swipeThreshold = Math.max(18, canvasSize * 0.045);
+        touchStart = null;
+
+        if (state === "over") {
+          restartFromInput();
+          return;
+        }
+
+        if (swipeDistance < swipeThreshold) return;
+
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          requestDirection(deltaX > 0 ? DIRECTIONS.right : DIRECTIONS.left);
+        } else {
+          requestDirection(deltaY > 0 ? DIRECTIONS.down : DIRECTIONS.up);
+        }
+      }, { passive: false });
+
+      boardElement.addEventListener("pointercancel", () => {
+        touchStart = null;
+      });
+
+      // --- Logic ticks ------------------------------------------------------
+      function update() {
+        if (state !== "running") return;
+
+        previousSnake = snake.map(part => ({ ...part }));
+
+        if (directionQueue.length) {
+          direction = directionQueue.shift();
+        }
+
+        const head = snake[0];
+        const nextHead = {
+          x: head.x + direction.x,
+          y: head.y + direction.y
+        };
+
+        const outsideBoard =
+          nextHead.x < 0 ||
+          nextHead.x >= GRID_SIZE ||
+          nextHead.y < 0 ||
+          nextHead.y >= GRID_SIZE;
+
+        const willEat = isSamePosition(nextHead, food);
+        const collisionBody = willEat ? snake : snake.slice(0, -1);
+        const hitBody = collisionBody.some(part => isSamePosition(part, nextHead));
+
+        if (outsideBoard || hitBody) {
+          previousSnake = snake.map(part => ({ ...part }));
+          finishGame(false);
+          return;
+        }
+
+        snake.unshift(nextHead);
+
+        if (willEat) {
+          score += 1;
+          eatPulseTime = performance.now();
+          tickDuration = Math.max(MIN_TICK_MS, INITIAL_TICK_MS - score * SPEED_STEP_MS);
+
+          if (score > bestScore) {
+            bestScore = score;
+            writeBestScore(bestScore);
+          }
+
+          updateScoreDisplay(true);
+          spawnFood();
+        } else {
+          snake.pop();
+        }
+
+        // A newly grown tail begins at the former tail position, so it appears
+        // naturally instead of popping in from elsewhere.
+        while (previousSnake.length < snake.length) {
+          previousSnake.push({ ...previousSnake[previousSnake.length - 1] });
+        }
+      }
+
+      // --- Responsive, high-DPI canvas -------------------------------------
+      function resizeCanvas() {
+        const rect = boardElement.getBoundingClientRect();
+        const nextSize = Math.max(1, Math.min(rect.width, rect.height));
+        const nextScale = Math.min(window.devicePixelRatio || 1, 3);
+
+        canvasSize = nextSize;
+        deviceScale = nextScale;
+        canvas.width = Math.round(canvasSize * deviceScale);
+        canvas.height = Math.round(canvasSize * deviceScale);
+        canvas.style.width = `${canvasSize}px`;
+        canvas.style.height = `${canvasSize}px`;
+        context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+
+        // One empty grid interval around the outermost markers provides room
+        // for full circles while keeping every node centered on a marker.
+        gridGap = canvasSize / (GRID_SIZE + 1);
+        gridOrigin = gridGap;
+      }
+
+      const resizeObserver = new ResizeObserver(resizeCanvas);
+      resizeObserver.observe(boardElement);
+      window.addEventListener("resize", resizeCanvas);
+      window.addEventListener("orientationchange", resizeCanvas);
+
+      // --- Canvas rendering -------------------------------------------------
+      function gridToCanvas(position) {
+        return {
+          x: gridOrigin + position.x * gridGap,
+          y: gridOrigin + position.y * gridGap
+        };
+      }
+
+      function interpolatePosition(from, to, progress) {
+        return {
+          x: from.x + (to.x - from.x) * progress,
+          y: from.y + (to.y - from.y) * progress
+        };
+      }
+
+      function drawCircle(x, y, radius, color, alpha = 1) {
+        context.globalAlpha = Math.min(1, Math.max(0, alpha));
+        context.fillStyle = color;
+        context.beginPath();
+        context.arc(x, y, Math.max(0.1, radius), 0, Math.PI * 2);
+        context.fill();
+        context.globalAlpha = 1;
+      }
+
+      function drawGrid() {
+        const dotRadius = Math.max(1, Math.min(1.75, gridGap * 0.052));
+        context.fillStyle = "rgba(255, 255, 255, 0.155)";
+
+        for (let y = 0; y < GRID_SIZE; y += 1) {
+          for (let x = 0; x < GRID_SIZE; x += 1) {
+            const point = gridToCanvas({ x, y });
+            context.beginPath();
+            context.arc(point.x, point.y, dotRadius, 0, Math.PI * 2);
+            context.fill();
+          }
+        }
+      }
+
+      function drawFood(now) {
+        const point = gridToCanvas(food);
+        const baseRadius = Math.max(5.2, gridGap * 0.29);
+        const age = Math.max(0, now - foodSpawnTime);
+        const appearScale = reduceMotionQuery.matches
+          ? 1
+          : Math.min(1, 0.72 + (age / 260) * 0.28);
+        const breathe = reduceMotionQuery.matches
+          ? 1
+          : 0.995 + Math.sin(now / 270) * 0.025;
+
+        drawCircle(
+          point.x,
+          point.y,
+          baseRadius * appearScale * breathe,
+          "rgb(191, 191, 193)",
+          0.9
+        );
+      }
+
+      function drawSnake(now, interpolation) {
+        const bodyRadius = Math.max(5.4, gridGap * 0.315);
+        const headRadius = Math.max(6.5, gridGap * 0.405);
+        const spawnAge = now - spawnTime;
+        const entryProgress = reduceMotionQuery.matches
+          ? 1
+          : Math.min(1, Math.max(0, spawnAge / 300));
+        const entryScale = 0.82 + entryProgress * 0.18;
+
+        const deathAge = now - deathTime;
+        const deathBrightness = state === "over" && deathAge < 230
+          ? 1 + Math.sin((deathAge / 230) * Math.PI) * 0.09
+          : 1;
+
+        for (let index = snake.length - 1; index >= 0; index -= 1) {
+          const current = snake[index];
+          const previous = previousSnake[index] || previousSnake[previousSnake.length - 1] || current;
+          const logicalPoint = interpolatePosition(previous, current, interpolation);
+          const point = gridToCanvas(logicalPoint);
+
+          if (index === 0) {
+            const pulseAge = now - eatPulseTime;
+            const pulse = !reduceMotionQuery.matches && pulseAge >= 0 && pulseAge < 240
+              ? 1 + Math.sin((pulseAge / 240) * Math.PI) * 0.115
+              : 1;
+
+            drawCircle(
+              point.x,
+              point.y,
+              headRadius * entryScale * pulse,
+              "rgb(246, 246, 246)",
+              Math.min(1, 0.2 + entryProgress * 0.8) * deathBrightness
+            );
+            drawEyes(point, headRadius * entryScale * pulse);
+          } else {
+            const tailProgress = index / Math.max(1, snake.length - 1);
+            const brightness = Math.round(239 - tailProgress * 27);
+            const alpha = (0.98 - tailProgress * 0.11) * Math.min(1, 0.2 + entryProgress * 0.8);
+
+            drawCircle(
+              point.x,
+              point.y,
+              bodyRadius * entryScale,
+              `rgb(${brightness}, ${brightness}, ${brightness})`,
+              Math.min(1, alpha * deathBrightness)
+            );
+          }
+        }
+      }
+
+      function drawEyes(headPoint, headRadius) {
+        const forward = direction;
+        const side = { x: -direction.y, y: direction.x };
+        const forwardOffset = headRadius * 0.31;
+        const sideOffset = headRadius * 0.3;
+        const eyeRadius = Math.max(1, headRadius * 0.095);
+
+        const eyeOne = {
+          x: headPoint.x + forward.x * forwardOffset + side.x * sideOffset,
+          y: headPoint.y + forward.y * forwardOffset + side.y * sideOffset
+        };
+        const eyeTwo = {
+          x: headPoint.x + forward.x * forwardOffset - side.x * sideOffset,
+          y: headPoint.y + forward.y * forwardOffset - side.y * sideOffset
+        };
+
+        drawCircle(eyeOne.x, eyeOne.y, eyeRadius, "rgb(8, 8, 8)", 0.95);
+        drawCircle(eyeTwo.x, eyeTwo.y, eyeRadius, "rgb(8, 8, 8)", 0.95);
+      }
+
+      function render(now) {
+        if (!canvasSize) resizeCanvas();
+
+        if (state === "running") {
+          let elapsed = now - lastTickTime;
+          let safetyCounter = 0;
+
+          while (elapsed >= tickDuration && state === "running" && safetyCounter < 5) {
+            const completedTickDuration = tickDuration;
+            update();
+            lastTickTime += completedTickDuration;
+            elapsed = now - lastTickTime;
+            safetyCounter += 1;
+          }
+        }
+
+        const interpolation = state === "running"
+          ? Math.min(1, Math.max(0, (now - lastTickTime) / tickDuration))
+          : 1;
+
+        context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+        context.globalAlpha = 1;
+        context.fillStyle = "#050505";
+        context.fillRect(0, 0, canvasSize, canvasSize);
+
+        drawGrid();
+        drawFood(now);
+        drawSnake(now, interpolation);
+
+        animationFrameId = requestAnimationFrame(render);
+      }
+
+      // Keep logic time stable after tab changes instead of trying to catch up.
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && state === "running") {
+          previousSnake = snake.map(part => ({ ...part }));
+          lastTickTime = performance.now();
+        }
+      });
+
+      function updateInputHints() {
+        const isTouch = coarsePointerQuery.matches || navigator.maxTouchPoints > 0;
+        idleHintElement.textContent = isTouch ? "swipe to start" : "press any arrow key";
+        restartHintElement.textContent = isTouch ? "Tap to restart" : "Press any key to restart";
+      }
+
+      coarsePointerQuery.addEventListener?.("change", updateInputHints);
+      updateInputHints();
+      bestScoreElement.textContent = String(bestScore);
+      resetGame(false);
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(render);
+    })();
+  </script>
+</body>
+</html>
