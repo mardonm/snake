@@ -26,25 +26,29 @@
     html,
     body {
       width: 100%;
-      min-height: 100%;
+      height: 100%;
       margin: 0;
       background: #050505;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
     }
 
     body {
-      min-height: 100vh;
-      min-height: 100svh;
-      overflow-x: hidden;
-      overscroll-behavior: none;
+      position: fixed;
+      inset: 0;
+      height: 100vh;
+      height: 100dvh;
       -webkit-tap-highlight-color: transparent;
     }
 
     main {
       width: 100%;
-      min-height: 100vh;
-      min-height: 100svh;
+      height: 100%;
       display: grid;
       place-items: center;
+      overflow: hidden;
+      touch-action: none;
       padding:
         max(24px, env(safe-area-inset-top))
         max(20px, env(safe-area-inset-right))
@@ -59,6 +63,13 @@
       gap: clamp(20px, 3vh, 30px);
       user-select: none;
       -webkit-user-select: none;
+    }
+
+    .topbar {
+      position: relative;
+      min-height: 53px;
+      display: grid;
+      place-items: center;
     }
 
     .scores {
@@ -92,6 +103,79 @@
       letter-spacing: -0.035em;
       line-height: 1.1;
       transform-origin: center;
+    }
+
+    .speed-control {
+      position: absolute;
+      top: -2px;
+      right: 0;
+      z-index: 3;
+      display: flex;
+      align-items: flex-end;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 72px;
+      touch-action: manipulation;
+    }
+
+    .speed-label {
+      padding-right: 3px;
+      color: rgba(255, 255, 255, 0.28);
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      line-height: 1;
+    }
+
+    .speed-select-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .speed-select-wrap::after {
+      content: "";
+      position: absolute;
+      right: 3px;
+      top: 50%;
+      width: 5px;
+      height: 5px;
+      border-right: 1.5px solid rgba(255, 255, 255, 0.42);
+      border-bottom: 1.5px solid rgba(255, 255, 255, 0.42);
+      transform: translateY(-70%) rotate(45deg);
+      pointer-events: none;
+    }
+
+    .speed-select {
+      width: 72px;
+      height: 28px;
+      margin: 0;
+      padding: 0 15px 0 0;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      border-radius: 7px;
+      outline: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.78);
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-align: right;
+      text-align-last: right;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .speed-select:focus-visible {
+      outline: 1px solid rgba(255, 255, 255, 0.34);
+      outline-offset: 2px;
+    }
+
+    .speed-select option {
+      background: #111;
+      color: #f2f2f2;
     }
 
     .board {
@@ -213,6 +297,10 @@
         min-height: 43px;
       }
 
+      .topbar {
+        min-height: 43px;
+      }
+
       .score-label {
         margin-bottom: 3px;
       }
@@ -230,16 +318,29 @@
 <body>
   <main>
     <section class="game" id="game" data-state="idle" aria-label="Snake game">
-      <header class="scores" aria-label="Scores">
-        <div class="score">
-          <span class="score-label">CURRENT</span>
-          <span class="score-value" id="currentScore">0</span>
-        </div>
-        <div class="score">
-          <span class="score-label">BEST</span>
-          <span class="score-value" id="bestScore">0</span>
-        </div>
-      </header>
+      <div class="topbar">
+        <header class="scores" aria-label="Scores">
+          <div class="score">
+            <span class="score-label">CURRENT</span>
+            <span class="score-value" id="currentScore">0</span>
+          </div>
+          <div class="score">
+            <span class="score-label">BEST</span>
+            <span class="score-value" id="bestScore">0</span>
+          </div>
+        </header>
+
+        <label class="speed-control" for="speedSelect">
+          <span class="speed-label">SPEED</span>
+          <span class="speed-select-wrap">
+            <select class="speed-select" id="speedSelect" aria-label="Game speed">
+              <option value="slow" selected>SLOW</option>
+              <option value="medium">MEDIUM</option>
+              <option value="fast">FAST</option>
+            </select>
+          </span>
+        </label>
+      </div>
 
       <div
         class="board"
@@ -270,10 +371,13 @@
       // --- Configuration ----------------------------------------------------
       const GRID_SIZE = 19;
       const INITIAL_LENGTH = 5;
-      const INITIAL_TICK_MS = 138;
-      const MIN_TICK_MS = 88;
-      const SPEED_STEP_MS = 1.7;
       const BEST_SCORE_KEY = "snakeBestScore";
+
+      const SPEED_PROFILES = Object.freeze({
+        slow:   { initial: 118, minimum: 80, step: 1.25 },
+        medium: { initial: 90,  minimum: 62, step: 1.0 },
+        fast:   { initial: 68,  minimum: 48, step: 0.75 }
+      });
 
       const DIRECTIONS = Object.freeze({
         up:    { x: 0,  y: -1, name: "up" },
@@ -305,6 +409,7 @@
       const currentScoreElement = document.getElementById("currentScore");
       const bestScoreElement = document.getElementById("bestScore");
       const finalScoreElement = document.getElementById("finalScore");
+      const speedSelectElement = document.getElementById("speedSelect");
       const idleHintElement = document.getElementById("idleHint");
       const restartHintElement = document.getElementById("restartHint");
       const statusElement = document.getElementById("status");
@@ -321,11 +426,12 @@
       let snake = [];
       let previousSnake = [];
       let direction = DIRECTIONS.right;
-      let directionQueue = [];
+      let turnPending = false;
       let food = { x: 13, y: 9 };
       let score = 0;
       let bestScore = readBestScore();
-      let tickDuration = INITIAL_TICK_MS;
+      let selectedSpeed = "slow";
+      let tickDuration = getTickDuration();
       let lastTickTime = performance.now();
       let spawnTime = performance.now();
       let foodSpawnTime = performance.now();
@@ -364,15 +470,20 @@
         return a.x + b.x === 0 && a.y + b.y === 0;
       }
 
+      function getTickDuration() {
+        const profile = SPEED_PROFILES[selectedSpeed];
+        return Math.max(profile.minimum, profile.initial - score * profile.step);
+      }
+
       // --- Setup, reset, and scoring ---------------------------------------
       function resetGame(startImmediately = false, startingDirection = DIRECTIONS.right) {
         const centerY = Math.floor(GRID_SIZE / 2);
         const headX = Math.floor(GRID_SIZE * 0.42);
 
         direction = startingDirection;
-        directionQueue = [];
+        turnPending = startImmediately;
         score = 0;
-        tickDuration = INITIAL_TICK_MS;
+        tickDuration = getTickDuration();
         deathTime = -Infinity;
         eatPulseTime = -Infinity;
 
@@ -457,22 +568,22 @@
         if (state === "idle") {
           if (isOpposite(nextDirection, direction)) return;
           direction = nextDirection;
+          turnPending = true;
           startGame();
           return;
         }
 
         if (state !== "running") return;
 
-        const plannedDirection = directionQueue.length
-          ? directionQueue[directionQueue.length - 1]
-          : direction;
-
+        // Accept one safe turn per grid step immediately. This updates the
+        // head direction on the very next frame without building a laggy queue.
         if (
-          directionQueue.length < 2 &&
-          !isOpposite(nextDirection, plannedDirection) &&
-          nextDirection.name !== plannedDirection.name
+          !turnPending &&
+          !isOpposite(nextDirection, direction) &&
+          nextDirection.name !== direction.name
         ) {
-          directionQueue.push(nextDirection);
+          direction = nextDirection;
+          turnPending = true;
         }
       }
 
@@ -507,31 +618,55 @@
         }
       }, { passive: false });
 
-      boardElement.addEventListener("pointerdown", event => {
+      function isSpeedInteraction(event) {
+        return event.target instanceof Element && Boolean(event.target.closest(".speed-control"));
+      }
+
+      document.addEventListener("pointerdown", event => {
+        if (isSpeedInteraction(event)) return;
         if (event.pointerType === "mouse" && event.button !== 0) return;
         event.preventDefault();
-        boardElement.setPointerCapture?.(event.pointerId);
+        const captureTarget = event.target instanceof Element ? event.target : boardElement;
+        captureTarget.setPointerCapture?.(event.pointerId);
         touchStart = {
           x: event.clientX,
           y: event.clientY,
-          pointerId: event.pointerId
+          pointerId: event.pointerId,
+          captureTarget,
+          handled: false
         };
       }, { passive: false });
 
-      boardElement.addEventListener("pointermove", event => {
+      document.addEventListener("pointermove", event => {
         if (touchStart && event.pointerId === touchStart.pointerId) {
           event.preventDefault();
+
+          if (!touchStart.handled && state !== "over") {
+            const deltaX = event.clientX - touchStart.x;
+            const deltaY = event.clientY - touchStart.y;
+            const swipeThreshold = Math.max(14, canvasSize * 0.03);
+
+            if (Math.hypot(deltaX, deltaY) >= swipeThreshold) {
+              touchStart.handled = true;
+              requestDirection(
+                Math.abs(deltaX) > Math.abs(deltaY)
+                  ? (deltaX > 0 ? DIRECTIONS.right : DIRECTIONS.left)
+                  : (deltaY > 0 ? DIRECTIONS.down : DIRECTIONS.up)
+              );
+            }
+          }
         }
       }, { passive: false });
 
-      boardElement.addEventListener("pointerup", event => {
+      document.addEventListener("pointerup", event => {
         if (!touchStart || event.pointerId !== touchStart.pointerId) return;
         event.preventDefault();
 
         const deltaX = event.clientX - touchStart.x;
         const deltaY = event.clientY - touchStart.y;
         const swipeDistance = Math.hypot(deltaX, deltaY);
-        const swipeThreshold = Math.max(18, canvasSize * 0.045);
+        const swipeThreshold = Math.max(14, canvasSize * 0.03);
+        const gestureWasHandled = touchStart.handled;
         touchStart = null;
 
         if (state === "over") {
@@ -539,7 +674,7 @@
           return;
         }
 
-        if (swipeDistance < swipeThreshold) return;
+        if (gestureWasHandled || swipeDistance < swipeThreshold) return;
 
         if (Math.abs(deltaX) > Math.abs(deltaY)) {
           requestDirection(deltaX > 0 ? DIRECTIONS.right : DIRECTIONS.left);
@@ -548,8 +683,29 @@
         }
       }, { passive: false });
 
-      boardElement.addEventListener("pointercancel", () => {
+      document.addEventListener("pointercancel", () => {
         touchStart = null;
+      });
+
+      // Extra protection for iOS overscroll/rubber-banding outside controls.
+      document.addEventListener("touchmove", event => {
+        if (!isSpeedInteraction(event)) event.preventDefault();
+      }, { passive: false });
+
+      document.addEventListener("wheel", event => {
+        if (!isSpeedInteraction(event)) event.preventDefault();
+      }, { passive: false });
+
+      speedSelectElement.addEventListener("change", () => {
+        const nextSpeed = speedSelectElement.value;
+        if (!SPEED_PROFILES[nextSpeed]) return;
+
+        const now = performance.now();
+        const progress = Math.min(1, Math.max(0, (now - lastTickTime) / tickDuration));
+        selectedSpeed = nextSpeed;
+        tickDuration = getTickDuration();
+        lastTickTime = now - progress * tickDuration;
+        statusElement.textContent = `Speed changed to ${nextSpeed}.`;
       });
 
       // --- Logic ticks ------------------------------------------------------
@@ -557,10 +713,6 @@
         if (state !== "running") return;
 
         previousSnake = snake.map(part => ({ ...part }));
-
-        if (directionQueue.length) {
-          direction = directionQueue.shift();
-        }
 
         const head = snake[0];
         const nextHead = {
@@ -589,7 +741,7 @@
         if (willEat) {
           score += 1;
           eatPulseTime = performance.now();
-          tickDuration = Math.max(MIN_TICK_MS, INITIAL_TICK_MS - score * SPEED_STEP_MS);
+          tickDuration = getTickDuration();
 
           if (score > bestScore) {
             bestScore = score;
@@ -607,6 +759,8 @@
         while (previousSnake.length < snake.length) {
           previousSnake.push({ ...previousSnake[previousSnake.length - 1] });
         }
+
+        turnPending = false;
       }
 
       // --- Responsive, high-DPI canvas -------------------------------------
