@@ -105,77 +105,131 @@
       transform-origin: center;
     }
 
-    .speed-control {
+    .settings {
       position: absolute;
       top: -2px;
       right: 0;
-      z-index: 3;
-      display: flex;
-      align-items: flex-end;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 72px;
+      z-index: 10;
       touch-action: manipulation;
     }
 
-    .speed-label {
-      padding-right: 3px;
-      color: rgba(255, 255, 255, 0.28);
-      font-size: 0.625rem;
-      font-weight: 600;
-      letter-spacing: 0.14em;
-      line-height: 1;
-    }
-
-    .speed-select-wrap {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .speed-select-wrap::after {
-      content: "";
-      position: absolute;
-      right: 3px;
-      top: 50%;
-      width: 5px;
-      height: 5px;
-      border-right: 1.5px solid rgba(255, 255, 255, 0.42);
-      border-bottom: 1.5px solid rgba(255, 255, 255, 0.42);
-      transform: translateY(-70%) rotate(45deg);
-      pointer-events: none;
-    }
-
-    .speed-select {
-      width: 72px;
-      height: 28px;
+    .menu-button {
+      width: 40px;
+      height: 36px;
       margin: 0;
-      padding: 0 15px 0 0;
-      appearance: none;
-      -webkit-appearance: none;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 4px;
       border: 0;
-      border-radius: 7px;
+      border-radius: 9px;
       outline: none;
       background: transparent;
-      color: rgba(255, 255, 255, 0.78);
-      font: inherit;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-align: right;
-      text-align-last: right;
       cursor: pointer;
       touch-action: manipulation;
     }
 
-    .speed-select:focus-visible {
+    .menu-button span {
+      width: 18px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.68);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
+    .menu-button:hover,
+    .menu-button[aria-expanded="true"] {
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .menu-button:focus-visible {
       outline: 1px solid rgba(255, 255, 255, 0.34);
       outline-offset: 2px;
     }
 
-    .speed-select option {
-      background: #111;
-      color: #f2f2f2;
+    .menu-panel {
+      position: absolute;
+      top: 42px;
+      right: 0;
+      width: 184px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 14px;
+      background: rgba(17, 17, 17, 0.98);
+      color: rgba(255, 255, 255, 0.88);
+      touch-action: manipulation;
+    }
+
+    .menu-panel[hidden] {
+      display: none;
+    }
+
+    .menu-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .menu-heading {
+      color: rgba(255, 255, 255, 0.34);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.11em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .menu-divider {
+      height: 1px;
+      margin: 11px 0;
+      background: rgba(255, 255, 255, 0.075);
+    }
+
+    .speed-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .mode-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+
+    .menu-option {
+      min-width: 0;
+      height: 32px;
+      margin: 0;
+      padding: 0 7px;
+      border: 0;
+      border-radius: 8px;
+      outline: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.48);
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.015em;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: color 130ms ease, background-color 130ms ease;
+    }
+
+    .menu-option:hover {
+      color: rgba(255, 255, 255, 0.76);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .menu-option[aria-checked="true"] {
+      color: rgba(255, 255, 255, 0.94);
+      background: rgba(255, 255, 255, 0.105);
+    }
+
+    .menu-option:focus-visible {
+      outline: 1px solid rgba(255, 255, 255, 0.34);
+      outline-offset: 2px;
     }
 
     .board {
@@ -330,16 +384,39 @@
           </div>
         </header>
 
-        <label class="speed-control" for="speedSelect">
-          <span class="speed-label">SPEED</span>
-          <span class="speed-select-wrap">
-            <select class="speed-select" id="speedSelect" aria-label="Game speed">
-              <option value="slow" selected>SLOW</option>
-              <option value="medium">MEDIUM</option>
-              <option value="fast">FAST</option>
-            </select>
-          </span>
-        </label>
+        <div class="settings" id="settings">
+          <button
+            class="menu-button"
+            id="menuButton"
+            type="button"
+            aria-label="Open game settings"
+            aria-expanded="false"
+            aria-controls="settingsMenu"
+          >
+            <span></span><span></span><span></span>
+          </button>
+
+          <div class="menu-panel" id="settingsMenu" role="dialog" aria-label="Game settings" hidden>
+            <div class="menu-section">
+              <span class="menu-heading">speed</span>
+              <div class="speed-options" role="radiogroup" aria-label="Snake speed">
+                <button class="menu-option speed-option" type="button" data-speed="slow" role="radio" aria-checked="true">slow</button>
+                <button class="menu-option speed-option" type="button" data-speed="medium" role="radio" aria-checked="false">medium</button>
+                <button class="menu-option speed-option" type="button" data-speed="fast" role="radio" aria-checked="false">fast</button>
+              </div>
+            </div>
+
+            <div class="menu-divider"></div>
+
+            <div class="menu-section">
+              <span class="menu-heading">mode</span>
+              <div class="mode-options" role="radiogroup" aria-label="Game mode">
+                <button class="menu-option mode-option" type="button" data-mode="standard" role="radio" aria-checked="false">Standard</button>
+                <button class="menu-option mode-option" type="button" data-mode="bordered" role="radio" aria-checked="true">Bordered</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div
@@ -409,7 +486,11 @@
       const currentScoreElement = document.getElementById("currentScore");
       const bestScoreElement = document.getElementById("bestScore");
       const finalScoreElement = document.getElementById("finalScore");
-      const speedSelectElement = document.getElementById("speedSelect");
+      const settingsElement = document.getElementById("settings");
+      const menuButtonElement = document.getElementById("menuButton");
+      const settingsMenuElement = document.getElementById("settingsMenu");
+      const speedOptionElements = [...document.querySelectorAll(".speed-option")];
+      const modeOptionElements = [...document.querySelectorAll(".mode-option")];
       const idleHintElement = document.getElementById("idleHint");
       const restartHintElement = document.getElementById("restartHint");
       const statusElement = document.getElementById("status");
@@ -431,6 +512,7 @@
       let score = 0;
       let bestScore = readBestScore();
       let selectedSpeed = "slow";
+      let selectedMode = "bordered";
       let tickDuration = getTickDuration();
       let lastTickTime = performance.now();
       let spawnTime = performance.now();
@@ -473,6 +555,40 @@
       function getTickDuration() {
         const profile = SPEED_PROFILES[selectedSpeed];
         return Math.max(profile.minimum, profile.initial - score * profile.step);
+      }
+
+      function closeSettingsMenu() {
+        settingsMenuElement.hidden = true;
+        menuButtonElement.setAttribute("aria-expanded", "false");
+      }
+
+      function updateCheckedOption(elements, dataKey, selectedValue) {
+        elements.forEach(element => {
+          element.setAttribute(
+            "aria-checked",
+            String(element.dataset[dataKey] === selectedValue)
+          );
+        });
+      }
+
+      function setSpeed(nextSpeed) {
+        if (!SPEED_PROFILES[nextSpeed]) return;
+
+        const now = performance.now();
+        const progress = Math.min(1, Math.max(0, (now - lastTickTime) / tickDuration));
+        selectedSpeed = nextSpeed;
+        tickDuration = getTickDuration();
+        lastTickTime = now - progress * tickDuration;
+        updateCheckedOption(speedOptionElements, "speed", selectedSpeed);
+        statusElement.textContent = `Speed changed to ${nextSpeed}.`;
+      }
+
+      function setMode(nextMode) {
+        if (nextMode !== "standard" && nextMode !== "bordered") return;
+
+        selectedMode = nextMode;
+        updateCheckedOption(modeOptionElements, "mode", selectedMode);
+        statusElement.textContent = `Mode changed to ${nextMode}.`;
       }
 
       // --- Setup, reset, and scoring ---------------------------------------
@@ -593,6 +709,15 @@
       }
 
       window.addEventListener("keydown", event => {
+        if (!settingsMenuElement.hidden && event.key === "Escape") {
+          event.preventDefault();
+          closeSettingsMenu();
+          menuButtonElement.focus();
+          return;
+        }
+
+        if (isMenuInteraction(event)) return;
+
         const nextDirection = KEY_DIRECTIONS[event.key];
 
         if (nextDirection) {
@@ -618,12 +743,12 @@
         }
       }, { passive: false });
 
-      function isSpeedInteraction(event) {
-        return event.target instanceof Element && Boolean(event.target.closest(".speed-control"));
+      function isMenuInteraction(event) {
+        return event.target instanceof Element && Boolean(event.target.closest(".settings"));
       }
 
       document.addEventListener("pointerdown", event => {
-        if (isSpeedInteraction(event)) return;
+        if (isMenuInteraction(event)) return;
         if (event.pointerType === "mouse" && event.button !== 0) return;
         event.preventDefault();
         const captureTarget = event.target instanceof Element ? event.target : boardElement;
@@ -689,23 +814,30 @@
 
       // Extra protection for iOS overscroll/rubber-banding outside controls.
       document.addEventListener("touchmove", event => {
-        if (!isSpeedInteraction(event)) event.preventDefault();
+        if (!isMenuInteraction(event)) event.preventDefault();
       }, { passive: false });
 
       document.addEventListener("wheel", event => {
-        if (!isSpeedInteraction(event)) event.preventDefault();
+        if (!isMenuInteraction(event)) event.preventDefault();
       }, { passive: false });
 
-      speedSelectElement.addEventListener("change", () => {
-        const nextSpeed = speedSelectElement.value;
-        if (!SPEED_PROFILES[nextSpeed]) return;
+      menuButtonElement.addEventListener("click", event => {
+        event.stopPropagation();
+        const shouldOpen = settingsMenuElement.hidden;
+        settingsMenuElement.hidden = !shouldOpen;
+        menuButtonElement.setAttribute("aria-expanded", String(shouldOpen));
+      });
 
-        const now = performance.now();
-        const progress = Math.min(1, Math.max(0, (now - lastTickTime) / tickDuration));
-        selectedSpeed = nextSpeed;
-        tickDuration = getTickDuration();
-        lastTickTime = now - progress * tickDuration;
-        statusElement.textContent = `Speed changed to ${nextSpeed}.`;
+      speedOptionElements.forEach(element => {
+        element.addEventListener("click", () => setSpeed(element.dataset.speed));
+      });
+
+      modeOptionElements.forEach(element => {
+        element.addEventListener("click", () => setMode(element.dataset.mode));
+      });
+
+      document.addEventListener("click", event => {
+        if (!settingsElement.contains(event.target)) closeSettingsMenu();
       });
 
       // --- Logic ticks ------------------------------------------------------
@@ -715,7 +847,7 @@
         previousSnake = snake.map(part => ({ ...part }));
 
         const head = snake[0];
-        const nextHead = {
+        let nextHead = {
           x: head.x + direction.x,
           y: head.y + direction.y
         };
@@ -726,11 +858,24 @@
           nextHead.y < 0 ||
           nextHead.y >= GRID_SIZE;
 
+        if (outsideBoard && selectedMode === "bordered") {
+          previousSnake = snake.map(part => ({ ...part }));
+          finishGame(false);
+          return;
+        }
+
+        if (selectedMode === "standard") {
+          nextHead = {
+            x: (nextHead.x + GRID_SIZE) % GRID_SIZE,
+            y: (nextHead.y + GRID_SIZE) % GRID_SIZE
+          };
+        }
+
         const willEat = isSamePosition(nextHead, food);
         const collisionBody = willEat ? snake : snake.slice(0, -1);
         const hitBody = collisionBody.some(part => isSamePosition(part, nextHead));
 
-        if (outsideBoard || hitBody) {
+        if (hitBody) {
           previousSnake = snake.map(part => ({ ...part }));
           finishGame(false);
           return;
@@ -803,6 +948,36 @@
         };
       }
 
+      // A wrapped node is drawn twice while crossing an edge: once as it
+      // leaves the board and once as it enters on the opposite side. This
+      // avoids a visible interpolation sweep across the entire playing field.
+      function getInterpolatedPositions(from, to, progress) {
+        const deltaX = to.x - from.x;
+        const deltaY = to.y - from.y;
+
+        if (Math.abs(deltaX) <= 1 && Math.abs(deltaY) <= 1) {
+          return [interpolatePosition(from, to, progress)];
+        }
+
+        const wrappedStep = {
+          x: Math.abs(deltaX) > 1 ? (from.x === GRID_SIZE - 1 ? 1 : -1) : 0,
+          y: Math.abs(deltaY) > 1 ? (from.y === GRID_SIZE - 1 ? 1 : -1) : 0
+        };
+
+        return [
+          interpolatePosition(
+            from,
+            { x: from.x + wrappedStep.x, y: from.y + wrappedStep.y },
+            progress
+          ),
+          interpolatePosition(
+            { x: to.x - wrappedStep.x, y: to.y - wrappedStep.y },
+            to,
+            progress
+          )
+        ];
+      }
+
       function drawCircle(x, y, radius, color, alpha = 1) {
         context.globalAlpha = Math.min(1, Math.max(0, alpha));
         context.fillStyle = color;
@@ -863,8 +1038,7 @@
         for (let index = snake.length - 1; index >= 0; index -= 1) {
           const current = snake[index];
           const previous = previousSnake[index] || previousSnake[previousSnake.length - 1] || current;
-          const logicalPoint = interpolatePosition(previous, current, interpolation);
-          const point = gridToCanvas(logicalPoint);
+          const points = getInterpolatedPositions(previous, current, interpolation).map(gridToCanvas);
 
           if (index === 0) {
             const pulseAge = now - eatPulseTime;
@@ -872,26 +1046,30 @@
               ? 1 + Math.sin((pulseAge / 240) * Math.PI) * 0.115
               : 1;
 
-            drawCircle(
-              point.x,
-              point.y,
-              headRadius * entryScale * pulse,
-              "rgb(246, 246, 246)",
-              Math.min(1, 0.2 + entryProgress * 0.8) * deathBrightness
-            );
-            drawEyes(point, headRadius * entryScale * pulse);
+            points.forEach(point => {
+              drawCircle(
+                point.x,
+                point.y,
+                headRadius * entryScale * pulse,
+                "rgb(246, 246, 246)",
+                Math.min(1, 0.2 + entryProgress * 0.8) * deathBrightness
+              );
+              drawEyes(point, headRadius * entryScale * pulse);
+            });
           } else {
             const tailProgress = index / Math.max(1, snake.length - 1);
             const brightness = Math.round(239 - tailProgress * 27);
             const alpha = (0.98 - tailProgress * 0.11) * Math.min(1, 0.2 + entryProgress * 0.8);
 
-            drawCircle(
-              point.x,
-              point.y,
-              bodyRadius * entryScale,
-              `rgb(${brightness}, ${brightness}, ${brightness})`,
-              Math.min(1, alpha * deathBrightness)
-            );
+            points.forEach(point => {
+              drawCircle(
+                point.x,
+                point.y,
+                bodyRadius * entryScale,
+                `rgb(${brightness}, ${brightness}, ${brightness})`,
+                Math.min(1, alpha * deathBrightness)
+              );
+            });
           }
         }
       }
