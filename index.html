@@ -400,8 +400,8 @@
             <div class="menu-section">
               <span class="menu-heading">speed</span>
               <div class="speed-options" role="radiogroup" aria-label="Snake speed">
-                <button class="menu-option speed-option" type="button" data-speed="slow" role="radio" aria-checked="true">slow</button>
-                <button class="menu-option speed-option" type="button" data-speed="medium" role="radio" aria-checked="false">medium</button>
+                <button class="menu-option speed-option" type="button" data-speed="slow" role="radio" aria-checked="false">slow</button>
+                <button class="menu-option speed-option" type="button" data-speed="medium" role="radio" aria-checked="true">medium</button>
                 <button class="menu-option speed-option" type="button" data-speed="fast" role="radio" aria-checked="false">fast</button>
               </div>
             </div>
@@ -411,8 +411,8 @@
             <div class="menu-section">
               <span class="menu-heading">mode</span>
               <div class="mode-options" role="radiogroup" aria-label="Game mode">
-                <button class="menu-option mode-option" type="button" data-mode="standard" role="radio" aria-checked="false">Standard</button>
-                <button class="menu-option mode-option" type="button" data-mode="bordered" role="radio" aria-checked="true">Bordered</button>
+                <button class="menu-option mode-option" type="button" data-mode="standard" role="radio" aria-checked="true">Standard</button>
+                <button class="menu-option mode-option" type="button" data-mode="bordered" role="radio" aria-checked="false">Bordered</button>
               </div>
             </div>
           </div>
@@ -451,10 +451,11 @@
       const BEST_SCORE_KEY = "snakeBestScore";
 
       const SPEED_PROFILES = Object.freeze({
-        slow:   { initial: 118, minimum: 80, step: 1.25 },
-        medium: { initial: 90,  minimum: 62, step: 1.0 },
-        fast:   { initial: 68,  minimum: 48, step: 0.75 }
+        slow:   { initial: 155, minimum: 105, step: 1.64 },
+        medium: { initial: 118, minimum: 80,  step: 1.25 },
+        fast:   { initial: 90,  minimum: 62,  step: 1.0 }
       });
+      const RESTART_LOCK_MS = 2000;
 
       const DIRECTIONS = Object.freeze({
         up:    { x: 0,  y: -1, name: "up" },
@@ -511,8 +512,8 @@
       let food = { x: 13, y: 9 };
       let score = 0;
       let bestScore = readBestScore();
-      let selectedSpeed = "slow";
-      let selectedMode = "bordered";
+      let selectedSpeed = "medium";
+      let selectedMode = "standard";
       let tickDuration = getTickDuration();
       let lastTickTime = performance.now();
       let spawnTime = performance.now();
@@ -703,7 +704,12 @@
         }
       }
 
+      function canRestartAfterDeath() {
+        return state === "over" && performance.now() - deathTime >= RESTART_LOCK_MS;
+      }
+
       function restartFromInput(nextDirection = null) {
+        if (!canRestartAfterDeath()) return;
         const safeDirection = nextDirection || DIRECTIONS.right;
         resetGame(true, safeDirection);
       }
@@ -724,7 +730,7 @@
           event.preventDefault();
 
           if (state === "over") {
-            restartFromInput(nextDirection);
+            if (canRestartAfterDeath()) restartFromInput(nextDirection);
           } else {
             requestDirection(nextDirection);
           }
@@ -732,7 +738,7 @@
         }
 
         if (
-          state === "over" &&
+          canRestartAfterDeath() &&
           !event.metaKey &&
           !event.ctrlKey &&
           !event.altKey &&
@@ -750,6 +756,11 @@
       document.addEventListener("pointerdown", event => {
         if (isMenuInteraction(event)) return;
         if (event.pointerType === "mouse" && event.button !== 0) return;
+        if (state === "over" && !canRestartAfterDeath()) {
+          touchStart = null;
+          event.preventDefault();
+          return;
+        }
         event.preventDefault();
         const captureTarget = event.target instanceof Element ? event.target : boardElement;
         captureTarget.setPointerCapture?.(event.pointerId);
@@ -795,7 +806,7 @@
         touchStart = null;
 
         if (state === "over") {
-          restartFromInput();
+          if (canRestartAfterDeath()) restartFromInput();
           return;
         }
 
