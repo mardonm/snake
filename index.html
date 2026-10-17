@@ -186,11 +186,13 @@
       background: rgba(255, 255, 255, 0.075);
     }
 
-    .speed-options {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 4px;
-    }
+
+  .speed-options {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 4px;
+  }
+
 
     .mode-options {
       display: grid;
@@ -455,7 +457,7 @@
         medium: { initial: 118, minimum: 80,  step: 1.25 },
         fast:   { initial: 90,  minimum: 62,  step: 1.0 }
       });
-      const RESTART_LOCK_MS = 2000;
+      const RESTART_LOCK_MS = 1000;
 
       const DIRECTIONS = Object.freeze({
         up:    { x: 0,  y: -1, name: "up" },
